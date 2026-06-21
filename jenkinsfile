@@ -1,0 +1,199 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_USER = 'digigrad'
+        AWS_DEFAULT_REGION = 'us-east-1' 
+        EKS_CLUSTER_NAME = 'my-eks-cluster' 
+        HELM_RELEASE_NAME = 'scada-system'
+        
+        MAIN_SYSTEM_IMAGE = "${DOCKERHUB_USER}/scada-main-system:${BUILD_NUMBER}"
+        FULL_SYSTEM_IMAGE = "${DOCKERHUB_USER}/full-scada-system:${BUILD_NUMBER}"
+    }
+    
+
+    
+    tools {
+        nodejs 'NodeJS'
+    }
+
+    stages {
+        
+        stage('Clean Workspace') {
+    steps {
+        cleanWs()
+    }
+}
+        
+        stage('Checkout Code') {
+            steps {
+                checkout scmGit(
+                    branches: [[name: 'main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/Zeyad-Gamal/smart-factory-simulation-system-last-edition.git',
+                        credentialsId: 'jenkins-github-token' 
+                    ]]
+                )
+            }
+        }
+
+
+        stage('CI: Scada-main-system') {
+            stages {
+                stage('SonarQube: Main System') {
+                    steps {
+                        withSonarQubeEnv('SonarQube-Server') {
+                            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                                sh """
+                                    ${tool 'SonarScanner'}/bin/sonar-scanner \
+                                    -Dsonar.projectKey=scada-main-system \
+                                    -Dsonar.sources=./Scada-main-system \
+                                    -Dsonar.host.url=http://sonarqube:9000 \
+                                    -Dsonar.login=$SONAR_TOKEN
+                                """
+                            }
+                        }
+                    }
+                }
+                
+                 stage('Quality Gate: Main System') {
+                     steps {
+                        timeout(time: 2, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                       }
+                    }
+                }
+                
+                stage('Build Docker: Main System') {
+                    steps {
+                      
+                        sh "docker build -t ${MAIN_SYSTEM_IMAGE} -f docker/scada-backend/Dockerfile ."
+                    }
+                }
+                stage('Trivy Scan: Main System') {
+                    
+                    steps {
+        sh """
+        docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -e TRIVY_DOWNLOAD_DB_ONLY=true \
+        -e TRIVY_TIMEOUT=10m \
+        aquasec/trivy:latest image \
+        --severity CRITICAL \
+        --timeout 10m \
+        --exit-code 0 \
+        ${MAIN_SYSTEM_IMAGE}
+        """
+    }
+
+}
+                stage('Push Hub: Main System') {
+                    steps {
+                        withCredentials([usernamePassword(credentialsId: 'docker-token', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh """
+                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                                docker push ${MAIN_SYSTEM_IMAGE}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+
+        stage('CI: Full-SCADA-system') {
+            stages {
+                stage('SonarQube: Full System') {
+                    steps {
+                        withSonarQubeEnv('SonarQube-Server') {
+                            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                                sh """
+                                    ${tool 'SonarScanner'}/bin/sonar-scanner \
+                                    -Dsonar.projectKey=full-scada-system \
+                                    -Dsonar.sources=./Full-SCADA-system \
+                                    -Dsonar.host.url=http://sonarqube:9000 \
+                                    -Dsonar.login=$SONAR_TOKEN
+                                """
+                            }
+                        }
+                    }
+                }
+                
+             
+                 stage('Quality Gate: Full System') {
+                   steps {
+                       timeout(time: 2, unit: 'MINUTES') {
+                           waitForQualityGate abortPipeline: true
+                        }
+                  }
+                 }
+                
+                stage('Build Docker: Full System') {
+                    steps {
+                        
+                        sh "docker build -t ${FULL_SYSTEM_IMAGE} -f docker/scada-frontend/Dockerfile ."
+                    }
+                }
+                
+                stage('Trivy Scan: Full System') {
+    
+    
+    steps {
+        sh """
+        docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -e TRIVY_DOWNLOAD_DB_ONLY=true \
+        -e TRIVY_TIMEOUT=10m \
+        aquasec/trivy:latest image \
+        --severity CRITICAL \
+        --timeout 10m \
+        --exit-code 0 \
+        ${FULL_SYSTEM_IMAGE}
+        """
+    }
+}
+                stage('Push Hub: Full System') {
+                    steps {
+                        withCredentials([usernamePassword(credentialsId: 'docker-token', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh """
+                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                                docker push ${FULL_SYSTEM_IMAGE}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+
+        stage('CD: Deploy with Helm to AWS EKS') {
+            when {
+                anyOf {
+                    changeset 'scada-helm/**'
+                    changeset 'Scada-main-system/**'
+                    changeset 'Full-SCADA-system/**'
+                }
+            }
+            steps {
+         
+                sh "aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
+                sh """
+                    helm upgrade --install ${HELM_RELEASE_NAME} ./scada-helm \
+                      --set mainSystem.image.tag=${BUILD_NUMBER} \
+                      --set fullSystem.image.tag=${BUILD_NUMBER}
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished. Cleaning up local workspace images...'
+            sh """
+                docker rmi ${MAIN_SYSTEM_IMAGE} || true
+                docker rmi ${FULL_SYSTEM_IMAGE} || true
+                docker image prune -f
+            """
+        }
+    }
+}

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: scada-system
+data:
+  PULL_INTERVAL_ALERTS: "5000"

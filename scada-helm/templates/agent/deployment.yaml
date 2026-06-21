@@ -1,0 +1,35 @@
+{{- if .Values.agent.enabled }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-agent
+  namespace: {{ .Values.namespaces.soc }}
+spec:
+  replicas: {{ .Values.agent.replicaCount }}
+  selector:
+    matchLabels:
+      app: ai-agent
+  template:
+    metadata:
+      labels:
+        app: ai-agent
+    spec:
+      containers:
+        - name: agent
+          image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
+          envFrom:
+            - configMapRef:
+                name: soc-config
+            - secretRef:
+                name: ai-agent-secret
+
+          resources:
+            requests:
+              memory: {{ .Values.agent.resources.requests.memory }}
+              cpu: {{ .Values.agent.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.agent.resources.limits.memory }}
+              cpu: {{ .Values.agent.resources.limits.cpu }}
+
+{{- end }}

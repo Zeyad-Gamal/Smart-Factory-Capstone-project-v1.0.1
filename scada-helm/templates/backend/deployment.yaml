@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: {{ .Values.namespaces.app }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+
+  strategy:
+    type: RollingUpdate
+
+    rollingUpdate:
+      maxSurge: {{ .Values.backend.strategy.maxSurge }}
+      maxUnavailable: {{ .Values.backend.strategy.maxUnavailable }}
+
+  selector:
+    matchLabels:
+      app: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+
+    spec:
+
+      containers:
+        - name: backend
+          image: {{ .Values.backend.image }}
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8000
+
+          envFrom:
+            - configMapRef:
+                name: backend-config
+
+          env:
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: APP_KEY
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: DB_PASSWORD
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            timeoutSeconds: 5
+          
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 80
+            periodSeconds: 15
+            timeoutSeconds: 5
+          
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 10
+            failureThreshold: 30
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: {{ .Values.backend.resources.requests.cpu }}
+              memory: {{ .Values.backend.resources.requests.memory }}
+
+            limits:
+              cpu: {{ .Values.backend.resources.limits.cpu }}
+              memory: {{ .Values.backend.resources.limits.memory }}

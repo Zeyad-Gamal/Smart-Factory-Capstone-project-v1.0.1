@@ -1,0 +1,21 @@
+{{- if and .Values.soc.enabled .Values.soc.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: soc-ingress
+  namespace: {{ .Values.namespaces.soc }}
+spec:
+  ingressClassName: nginx
+
+  rules:
+    - host: {{ .Values.soc.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: soc-service
+                port:
+                  number: {{ .Values.soc.service.port }}
+{{- end }}
