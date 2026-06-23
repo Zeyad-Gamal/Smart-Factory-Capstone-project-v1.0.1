@@ -3,7 +3,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { FACTORY_URL } from '@/config/api';
 
 
-const POLL_INTERVAL=  window.APP_CONFIG.POLL_INTERVAL;
+// const POLL_INTERVAL=  window.APP_CONFIG.PULL_INTERVAL_ALERTS;
+const POLL_INTERVAL= 5000;
 
 
 

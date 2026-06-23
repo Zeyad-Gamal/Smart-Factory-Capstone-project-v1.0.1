@@ -15,12 +15,18 @@ spec:
     spec:
       containers:
         - name: agent
-          image: digigrad/ai-agent:v4
+          image: digigrad/ai-agent:v4.0.1
+
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-agent-secret
+                  key: OPENAI_API_KEY
+
           envFrom:
             - configMapRef:
                 name: soc-config
-            - secretRef:
-                name: {{ .Values.secret.Openai_Api_Key }}
 
           resources:
             requests:

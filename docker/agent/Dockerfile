@@ -32,7 +32,7 @@ COPY agent.py .
 
 # Environment variables (CLOUD LLM ONLY)
 ENV SOC_BASE_URL="http://soc-service:5000"
-ENV OPENAI_BASE_URL="https://openrouter.ai/api/v1"
+ENV OPENAI_BASE_URL="https://api.groq.com/openai/v1"
 ENV MODEL="meta-llama/llama-3.2-3b-instruct:free"
 
 ENV POLL_INTERVAL="30"

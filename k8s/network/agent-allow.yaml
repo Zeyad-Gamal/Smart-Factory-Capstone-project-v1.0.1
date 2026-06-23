@@ -25,14 +25,14 @@ spec:
           port: 5000
 
     # Call Ollama
-    - to:
-        - podSelector:
-            matchLabels:
-              app: ollama
+    # - to:
+    #     - podSelector:
+    #         matchLabels:
+    #           app: ollama
 
-      ports:
-        - protocol: TCP
-          port: 11434
+    #   ports:
+    #     - protocol: TCP
+    #       port: 11434
 
     # DNS
     - to:
@@ -46,3 +46,11 @@ spec:
 
         - protocol: TCP
           port: 53
+
+# Allow external HTTPS (Groq AI)
+    - to:
+      - ipBlock:
+          cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443

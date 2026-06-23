@@ -27,7 +27,7 @@ public function log($type, $message, $severity = 'info', $metadata = [])
     // save in DB
     $log = Log::create($logData);
 
-    // write to file (ده اللي هيستخدمه SOC)
+    // write to file ( Which SOC will use )
     file_put_contents(
         storage_path('logs/soc.log'),
         json_encode($logData) . PHP_EOL,

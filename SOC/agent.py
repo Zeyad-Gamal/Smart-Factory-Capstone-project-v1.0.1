@@ -17,7 +17,7 @@ load_dotenv()
 SOC_BASE_URL   = os.getenv("SOC_BASE_URL", "http://localhost:5000")
 
 OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
 MODEL           = os.getenv("MODEL", "deepseek/deepseek-chat")
 
 MAX_LOGS_BATCH = int(os.getenv("MAX_LOGS_BATCH", "20"))

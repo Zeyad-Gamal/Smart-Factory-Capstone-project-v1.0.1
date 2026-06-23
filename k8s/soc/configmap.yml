@@ -10,6 +10,6 @@ data:
   # ── AI Agent ──────────────────────────────────
   SOC_BASE_URL:   "http://soc-service.soc.svc.cluster.local:5000"
   OLLAMA_URL:     "http://ollama-service.soc.svc.cluster.local:11434"
-  MODEL:          "llama3.2"
+  MODEL:          "llama-3.1-8b-instant"
   POLL_INTERVAL:  "30"
   MAX_LOGS_BATCH: "20"
